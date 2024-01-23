@@ -176,7 +176,8 @@ app.get("/getAllNotes", express.json(), async (req, res) => {
     try {
 
     const token = req.headers.authorization.split(" ")[1];
-
+    
+    // verify client using an already generated token
     jwt.verify(token, "secret-key", async (err, decoded) => {
         if (err) {
             return res.status(401).send("Unauthorized.");
@@ -199,17 +200,18 @@ app.get("/getAllNotes", express.json(), async (req, res) => {
 app.delete("/deleteNote/:noteId", express.json(), async (req, res) => {
   try {
     const noteId = req.params.noteId;
-    if (!ObjectId.isValid(noteId)) {
+    if (!ObjectId.isValid(noteId)) { // check id endpoint is valid
       return res.status(400).json({ error: "Invalid note ID." });
     }
 
+    // verify client using an already generated token
     const token = req.headers.authorization.split(" ")[1];
     jwt.verify(token, "secret-key", async (err, decoded) => {
       if (err) {
         return res.status(401).send("Unauthorized.");
       }
   
-      // Find notes with given username
+      // Find note with given username and noteId
       const collection = db.collection(COLLECTIONS.notes);
       const data = await collection.findOne({
         username: decoded.username,
@@ -221,6 +223,7 @@ app.delete("/deleteNote/:noteId", express.json(), async (req, res) => {
           .json({ error: "Unable to find note with given ID for this user." });
       }
 
+      // delete the note with _id=noteId with its corresponding username
       await collection.deleteOne({
         username: decoded.username,
         _id: new ObjectId(noteId),
@@ -240,17 +243,19 @@ app.patch("/editNote/:noteId", express.json(), async (req, res) => {
     const noteId = req.params.noteId;
     const { title, content } = req.body;
 
+    // check if endpoint is valid
     if (!ObjectId.isValid(noteId)) {
       return res.status(400).json({ error: "Invalid note ID." });
     }
 
+    // verify client for secure access
     const token = req.headers.authorization.split(" ")[1];
     jwt.verify(token, "secret-key", async (err, decoded) => {
       if (err) {
         return res.status(401).send("Unauthorized.");
       }
   
-      // Find notes with given username
+      // Find note with given username and noteId
       const collection = db.collection(COLLECTIONS.notes);
       const data = await collection.findOne({
         username: decoded.username,
@@ -262,6 +267,7 @@ app.patch("/editNote/:noteId", express.json(), async (req, res) => {
           .json({ error: "Unable to find note with given ID for this user." });
       }
       
+      // edit title if provided by client
       if (title != null) {
         await collection.updateOne({
           username: decoded.username,
@@ -272,6 +278,7 @@ app.patch("/editNote/:noteId", express.json(), async (req, res) => {
         })
       }
 
+      // edit content if provided by client
       if (content != null) {
         await collection.updateOne({
           username: decoded.username,
@@ -281,7 +288,6 @@ app.patch("/editNote/:noteId", express.json(), async (req, res) => {
           $set:{ content : content}
         })
       }
-
       
       res.json({ response: `Document with Id ${noteId} properly updated` });
     });
