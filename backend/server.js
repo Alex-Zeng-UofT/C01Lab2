@@ -195,3 +195,98 @@ app.get("/getAllNotes", express.json(), async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 })
+
+app.delete("/deleteNote/:noteId", express.json(), async (req, res) => {
+  try {
+    const noteId = req.params.noteId;
+    if (!ObjectId.isValid(noteId)) {
+      return res.status(400).json({ error: "Invalid note ID." });
+    }
+
+    const token = req.headers.authorization.split(" ")[1];
+    jwt.verify(token, "secret-key", async (err, decoded) => {
+      if (err) {
+        return res.status(401).send("Unauthorized.");
+      }
+  
+      // Find notes with given username
+      const collection = db.collection(COLLECTIONS.notes);
+      const data = await collection.findOne({
+        username: decoded.username,
+        _id: new ObjectId(noteId),
+      });
+      if (!data) {
+        return res
+          .status(404)
+          .json({ error: "Unable to find note with given ID for this user." });
+      }
+
+      await collection.deleteOne({
+        username: decoded.username,
+        _id: new ObjectId(noteId),
+      })
+      
+      res.json({ response: `Document with Id ${noteId} properly deleted` });
+    });
+      
+  } catch(error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// update contents of note by provided noteId
+app.patch("/editNote/:noteId", express.json(), async (req, res) => {
+  try {
+    const noteId = req.params.noteId;
+    const { title, content } = req.body;
+
+    if (!ObjectId.isValid(noteId)) {
+      return res.status(400).json({ error: "Invalid note ID." });
+    }
+
+    const token = req.headers.authorization.split(" ")[1];
+    jwt.verify(token, "secret-key", async (err, decoded) => {
+      if (err) {
+        return res.status(401).send("Unauthorized.");
+      }
+  
+      // Find notes with given username
+      const collection = db.collection(COLLECTIONS.notes);
+      const data = await collection.findOne({
+        username: decoded.username,
+        _id: new ObjectId(noteId),
+      });
+      if (!data) {
+        return res
+          .status(404)
+          .json({ error: "Unable to find note with given ID for this user." });
+      }
+      
+      if (title != null) {
+        await collection.updateOne({
+          username: decoded.username,
+          _id: new ObjectId(noteId),
+        },
+        {
+          $set:{ title : title}
+        })
+      }
+
+      if (content != null) {
+        await collection.updateOne({
+          username: decoded.username,
+          _id: new ObjectId(noteId),
+        },
+        {
+          $set:{ content : content}
+        })
+      }
+
+      
+      res.json({ response: `Document with Id ${noteId} properly updated` });
+    });
+      
+  } catch(error) {
+    res.status(500).json({ error: error.message })
+  }
+})
